@@ -1,0 +1,759 @@
+{
+  "schemaVersion": "1.0",
+  "id": "prepare-savings-subaccount",
+  "revision": 1,
+  "name": "Prepare savings sub-account",
+  "description": "Look up a synthetic member, return their savings data, and prepare a new savings sub-account through the safe review checkpoint.",
+  "discoveryRunId": "c56aa376-5c9f-41fa-a4a1-dcdb1ed3f8a1",
+  "app": {
+    "family": "northstar-core",
+    "version": "7-demo",
+    "surface": "web"
+  },
+  "entryUrl": "http://127.0.0.1:4173/",
+  "contract": {
+    "inputs": {
+      "memberId": {
+        "description": "Synthetic member number",
+        "sensitivity": "sensitive",
+        "type": "string",
+        "pattern": "^[0-9]{5}$"
+      },
+      "accountNickname": {
+        "description": "Nickname for the proposed savings sub-account",
+        "sensitivity": "sensitive",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      }
+    },
+    "outputs": {
+      "memberName": {
+        "value": {
+          "description": "Synthetic member display name",
+          "sensitivity": "sensitive",
+          "type": "string"
+        },
+        "from": "member-name"
+      },
+      "savingsBalance": {
+        "value": {
+          "description": "Current synthetic savings balance",
+          "sensitivity": "sensitive",
+          "type": "number",
+          "unit": "USD"
+        },
+        "from": "savings-balance"
+      }
+    },
+    "businessOutcomes": [
+      {
+        "code": "member-not-found",
+        "description": "No member exists for the supplied synthetic member number."
+      }
+    ]
+  },
+  "permissions": {
+    "origins": ["http://127.0.0.1:4173"],
+    "routes": [
+      "/",
+      "/search",
+      "/members/search",
+      "/members/:memberId",
+      "/members/:memberId/dismiss-interstitial",
+      "/members/:memberId/subaccounts/new",
+      "/members/:memberId/subaccounts/review"
+    ],
+    "actions": ["navigate", "fill", "click", "read", "wait"]
+  },
+  "steps": [
+    {
+      "id": "step-01",
+      "description": "Enter the member number",
+      "command": {
+        "kind": "fill",
+        "target": {
+          "description": "Member number input",
+          "whyRobust": "Stable input name for member lookup in the member servicing iframe.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "input[name=\"memberId\"]"
+            }
+          ]
+        },
+        "value": "{{inputs.memberId}}"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Search button",
+            "whyRobust": "The accessible button role and visible action name express intent.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "button",
+                "name": "Search",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Search",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-02",
+      "description": "Search for the member",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Search button",
+          "whyRobust": "Stable button text in the member search form within the servicing iframe.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "button",
+              "name": "Search",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "table.form-grid > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > button"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Search Results heading",
+            "whyRobust": "A stable workflow heading is preferable to generated element ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Search Results",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Search Results",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "onObserved": [
+        {
+          "when": {
+            "kind": "visible",
+            "target": {
+              "description": "Member not found outcome",
+              "whyRobust": "The application exposes this stable business outcome text.",
+              "frame": {
+                "strategies": [
+                  {
+                    "kind": "css",
+                    "selector": "iframe[title=\"Member servicing workspace\"]"
+                  }
+                ]
+              },
+              "strategies": [
+                {
+                  "kind": "text",
+                  "text": "Member not found",
+                  "exact": true
+                }
+              ]
+            }
+          },
+          "action": {
+            "kind": "return_outcome",
+            "code": "member-not-found"
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "safe"
+    },
+    {
+      "id": "step-03",
+      "description": "Open the member record",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Open member record link",
+          "whyRobust": "Stable business action text in the search results table inside the member servicing iframe.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "link",
+              "name": "Open member record",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "table.results > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Member Detail heading",
+            "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Member Detail",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Member Detail",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "onObserved": [
+        {
+          "when": {
+            "kind": "visible",
+            "target": {
+              "description": "Temporary system error",
+              "whyRobust": "The host's stable error classification drives a declared recovery.",
+              "frame": {
+                "strategies": [
+                  {
+                    "kind": "css",
+                    "selector": "iframe[title=\"Member servicing workspace\"]"
+                  }
+                ]
+              },
+              "strategies": [
+                {
+                  "kind": "text",
+                  "text": "Temporary system error",
+                  "exact": true
+                }
+              ]
+            }
+          },
+          "action": {
+            "kind": "recover",
+            "command": {
+              "kind": "click",
+              "target": {
+                "description": "Try again link",
+                "whyRobust": "The application explicitly marks this transient request as safe to retry.",
+                "frame": {
+                  "strategies": [
+                    {
+                      "kind": "css",
+                      "selector": "iframe[title=\"Member servicing workspace\"]"
+                    }
+                  ]
+                },
+                "strategies": [
+                  {
+                    "kind": "role",
+                    "role": "link",
+                    "name": "Try again",
+                    "exact": true
+                  },
+                  {
+                    "kind": "text",
+                    "text": "Try again",
+                    "exact": true
+                  }
+                ]
+              }
+            },
+            "message": "Retry the explicitly safe transient host request once."
+          }
+        },
+        {
+          "when": {
+            "kind": "visible",
+            "target": {
+              "description": "Permission denied outcome",
+              "whyRobust": "The application exposes an explicit authorization failure.",
+              "frame": {
+                "strategies": [
+                  {
+                    "kind": "css",
+                    "selector": "iframe[title=\"Member servicing workspace\"]"
+                  }
+                ]
+              },
+              "strategies": [
+                {
+                  "kind": "text",
+                  "text": "Permission denied",
+                  "exact": true
+                }
+              ]
+            }
+          },
+          "action": {
+            "kind": "fail",
+            "category": "permission",
+            "message": "The operator is not authorized to view this member."
+          }
+        },
+        {
+          "when": {
+            "kind": "visible",
+            "target": {
+              "description": "Unexpected confirmation required",
+              "whyRobust": "This explicit runtime state must transfer control to a human.",
+              "frame": {
+                "strategies": [
+                  {
+                    "kind": "css",
+                    "selector": "iframe[title=\"Member servicing workspace\"]"
+                  }
+                ]
+              },
+              "strategies": [
+                {
+                  "kind": "text",
+                  "text": "Unexpected confirmation required",
+                  "exact": true
+                }
+              ]
+            }
+          },
+          "action": {
+            "kind": "intervene",
+            "reason": "runtime_state",
+            "summary": "A human must acknowledge the unexpected host migration notice.",
+            "resumeWhen": {
+              "kind": "visible",
+              "target": {
+                "description": "Member Detail heading",
+                "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+                "frame": {
+                  "strategies": [
+                    {
+                      "kind": "css",
+                      "selector": "iframe[title=\"Member servicing workspace\"]"
+                    }
+                  ]
+                },
+                "strategies": [
+                  {
+                    "kind": "role",
+                    "role": "heading",
+                    "name": "Member Detail",
+                    "exact": true
+                  },
+                  {
+                    "kind": "text",
+                    "text": "Member Detail",
+                    "exact": true
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "safe"
+    },
+    {
+      "id": "step-04",
+      "description": "Read the member name",
+      "command": {
+        "kind": "read",
+        "target": {
+          "description": "Member name value in the Member Detail table",
+          "whyRobust": "Stable detail-table cell for the member name on the member record page.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "table.detail:nth-of-type(1) > tbody > tr:nth-of-type(2) > td:nth-of-type(2)"
+            }
+          ]
+        },
+        "bind": "member-name",
+        "parse": "text"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Member Detail heading",
+            "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Member Detail",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Member Detail",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "safe"
+    },
+    {
+      "id": "step-05",
+      "description": "Read the current savings balance",
+      "command": {
+        "kind": "read",
+        "target": {
+          "description": "Available balance cell in the Deposit Accounts table",
+          "whyRobust": "Stable table cell for the savings balance on the member detail page.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "table.results:nth-of-type(2) > tbody > tr:nth-of-type(2) > td:nth-of-type(3)"
+            }
+          ]
+        },
+        "bind": "savings-balance",
+        "parse": "currency"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Member Detail heading",
+            "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Member Detail",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Member Detail",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "safe"
+    },
+    {
+      "id": "step-06",
+      "description": "Open the savings sub-account workflow",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Open savings sub-account button",
+          "whyRobust": "Stable business action text on the member detail page to begin the savings sub-account workflow.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "button",
+              "name": "Open savings sub-account",
+              "exact": true
+            },
+            {
+              "kind": "text",
+              "text": "Open savings sub-account",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "a.button"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Open Savings Sub-account heading",
+            "whyRobust": "The workflow heading is a stable checkpoint.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Open Savings Sub-account",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Open Savings Sub-account",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-07",
+      "description": "Enter the proposed account nickname",
+      "command": {
+        "kind": "fill",
+        "target": {
+          "description": "Account nickname input",
+          "whyRobust": "Stable named input in the open savings sub-account form.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "input[name=\"accountNickname\"]"
+            }
+          ]
+        },
+        "value": "{{inputs.accountNickname}}"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Continue to review button",
+            "whyRobust": "The button role and business action text are stable.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "button",
+                "name": "Continue to review",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Continue to review",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-08",
+      "description": "Reach the review checkpoint",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Continue to review button",
+          "whyRobust": "Stable business action text on the savings sub-account form, within the member servicing iframe.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "button",
+              "name": "Continue to review",
+              "exact": true
+            },
+            {
+              "kind": "text",
+              "text": "Continue to review",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "table.form-grid > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > button"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Ready for final approval checkpoint",
+            "whyRobust": "This text is the explicit safe stopping checkpoint before the irreversible action.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "text",
+                "text": "Ready for final approval",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    }
+  ],
+  "success": [
+    {
+      "kind": "visible",
+      "target": {
+        "description": "Ready for final approval checkpoint",
+        "whyRobust": "This text is the explicit safe stopping checkpoint before the irreversible action.",
+        "frame": {
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "iframe[title=\"Member servicing workspace\"]"
+            }
+          ]
+        },
+        "strategies": [
+          {
+            "kind": "text",
+            "text": "Ready for final approval",
+            "exact": true
+          }
+        ]
+      }
+    }
+  ]
+}

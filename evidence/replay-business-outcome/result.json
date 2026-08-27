@@ -1,0 +1,25 @@
+{
+  "artifactId": "prepare-savings-subaccount",
+  "artifactRevision": 1,
+  "artifactSha256": "d613294b0673673c7f52ea8dc1c79fba00874e801dce3115fca8d2fe70ac966f",
+  "modelCalls": 0,
+  "result": {
+    "status": "business_outcome",
+    "runId": "48dc68c7-1d18-4ff4-a9d1-d2f23e1f8db6",
+    "code": "member-not-found",
+    "details": {},
+    "evidence": [
+      {
+        "kind": "events",
+        "path": "events.jsonl"
+      }
+    ]
+  },
+  "signature": [
+    "entry|navigate|-|http://127.0.0.1:4173/",
+    "step-01|fill|0|http://127.0.0.1:4173/search",
+    "step-01|check:visible|true",
+    "step-02|click|0|http://127.0.0.1:4173/members/search?memberId=[REDACTED:memberId]",
+    "step-02|branch:return_outcome"
+  ]
+}

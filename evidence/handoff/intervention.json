@@ -1,0 +1,17 @@
+{
+  "id": "efdb550a-8400-4636-b54d-ffe890cc89da",
+  "runId": "80faf925-4d44-4167-b6fd-c08a46b0aa10",
+  "capabilityId": "prepare-savings-subaccount",
+  "stepId": "step-03",
+  "goal": "Look up a synthetic member, return their savings data, and prepare a new savings sub-account through the safe review checkpoint.",
+  "reason": "runtime_state",
+  "summary": "A human must acknowledge the unexpected host migration notice.",
+  "sessionId": "0b78b930-3765-4d7d-adfc-962fb72aa0e1",
+  "createdAt": "2026-08-27T03:54:35.237Z",
+  "status": "requested",
+  "screenshot": {
+    "kind": "screenshot",
+    "path": "screenshots/001-handoff-step-03.png",
+    "sha256": "6d8cda99584c4b031ce32112d70e93d5badc59ae74c430479d7eb8026abe1edc"
+  }
+}

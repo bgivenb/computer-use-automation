@@ -1,0 +1,40 @@
+{
+  "artifactId": "prepare-savings-subaccount",
+  "artifactRevision": 1,
+  "artifactSha256": "d613294b0673673c7f52ea8dc1c79fba00874e801dce3115fca8d2fe70ac966f",
+  "modelCalls": 0,
+  "result": {
+    "status": "success",
+    "runId": "ce074af2-ef30-402b-908c-a7fbe79072a7",
+    "outputs": {
+      "memberName": "[REDACTED:memberName]",
+      "savingsBalance": "[REDACTED:savingsBalance]"
+    },
+    "evidence": [
+      {
+        "kind": "events",
+        "path": "events.jsonl"
+      }
+    ]
+  },
+  "signature": [
+    "entry|navigate|-|http://127.0.0.1:4173/",
+    "step-01|fill|0|http://127.0.0.1:4173/search",
+    "step-01|check:visible|true",
+    "step-02|click|0|http://127.0.0.1:4173/members/search?memberId=[REDACTED:memberId]",
+    "step-02|check:visible|true",
+    "step-03|click|0|http://127.0.0.1:4173/members/[REDACTED:memberId]",
+    "step-03|check:visible|true",
+    "step-04|read|0|http://127.0.0.1:4173/members/[REDACTED:memberId]",
+    "step-04|check:visible|true",
+    "step-05|read|0|http://127.0.0.1:4173/members/[REDACTED:memberId]",
+    "step-05|check:visible|true",
+    "step-06|click|1|http://127.0.0.1:4173/members/[REDACTED:memberId]/subaccounts/new",
+    "step-06|check:visible|true",
+    "step-07|fill|0|http://127.0.0.1:4173/members/[REDACTED:memberId]/subaccounts/new",
+    "step-07|check:visible|true",
+    "step-08|click|0|http://127.0.0.1:4173/members/[REDACTED:memberId]/subaccounts/review",
+    "step-08|check:visible|true",
+    "success|check:visible|true"
+  ]
+}
