@@ -56,6 +56,23 @@ describe("effectiveCommandRisk", () => {
       ),
     ).toBe("irreversible");
   });
+
+  it("uses inspected live target semantics for CSS-only clicks", () => {
+    expect(
+      effectiveCommandRisk(
+        {
+          kind: "click",
+          target: {
+            description: "primary action",
+            whyRobust: "stable class",
+            strategies: [{ kind: "css", selector: ".primary-action" }],
+          },
+        },
+        "safe",
+        "button submit Create account https://trusted.test/accounts/create",
+      ),
+    ).toBe("irreversible");
+  });
 });
 
 describe("evaluatePolicy", () => {

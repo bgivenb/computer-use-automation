@@ -21,6 +21,13 @@ export type PreparedReplay = {
   close: () => Promise<void>;
 };
 
+export class ArtifactIntegrityError extends Error {
+  constructor() {
+    super("Compiled artifact digest does not match its content");
+    this.name = "ArtifactIntegrityError";
+  }
+}
+
 export const invalidInputSummary = (
   artifact: CapabilityArtifact,
   inputValues: Record<string, unknown>,
@@ -124,6 +131,9 @@ export const replayCompiled = async (options: {
   runsDirectory?: string;
   headless?: boolean;
 }): Promise<ReplaySummary> => {
+  if (artifactDigest(options.compiled.artifact) !== options.compiled.sha256) {
+    throw new ArtifactIntegrityError();
+  }
   const inputFailure = invalidInputSummary(options.compiled.artifact, options.inputValues);
   if (inputFailure) return inputFailure;
   const prepared = await prepareReplay({

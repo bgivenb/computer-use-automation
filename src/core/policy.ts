@@ -76,7 +76,7 @@ const riskRank: Readonly<Record<Risk, number>> = {
   irreversible: 2,
 };
 
-const inferredRisk = (command: Command): Risk => {
+const inferredRisk = (command: Command, observedTarget = ""): Risk => {
   if (command.kind === "navigate" || command.kind === "read" || command.kind === "wait") {
     return "safe";
   }
@@ -84,6 +84,7 @@ const inferredRisk = (command: Command): Risk => {
 
   const targetText = [
     command.target.description,
+    observedTarget,
     ...command.target.strategies.flatMap((strategy) => {
       if (strategy.kind === "role") return [strategy.name];
       if (strategy.kind === "label" || strategy.kind === "text") return [strategy.text];
@@ -98,8 +99,8 @@ const inferredRisk = (command: Command): Risk => {
 };
 
 /** Artifact/profile risk can raise this result, but cannot lower the runtime's independent floor. */
-export function effectiveCommandRisk(command: Command, declared: Risk): Risk {
-  const inferred = inferredRisk(command);
+export function effectiveCommandRisk(command: Command, declared: Risk, observedTarget = ""): Risk {
+  const inferred = inferredRisk(command, observedTarget);
   return riskRank[inferred] > riskRank[declared] ? inferred : declared;
 }
 

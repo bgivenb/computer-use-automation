@@ -139,7 +139,13 @@ export const runDiscovery = async (options: {
     }
     if (decision.type === "finish") {
       for (const condition of options.profile.success) {
-        const receipt = await options.surface.check(condition);
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) {
+          throw new DiscoveryStoppedError("Discovery exceeded its time budget");
+        }
+        const receipt = await options.surface.check(bindCondition(condition, inputs), {
+          timeoutMs: Math.min(10_000, remainingMs),
+        });
         await options.recorder.record(
           { phase: "discovery", actor: { type: "automation" }, capabilityId: options.profile.id },
           { type: "checkpoint.checked", data: { receipt } },
@@ -177,11 +183,11 @@ export const runDiscovery = async (options: {
     }
     assertReusableCommand(decision.command);
     const command = bindCommand(decision.command, inputs);
-    const commandUrl = await options.surface.policyUrl(command);
-    const risk = effectiveCommandRisk(command, semantics.risk);
+    const policyContext = await options.surface.policyContext(command);
+    const risk = effectiveCommandRisk(command, semantics.risk, policyContext.riskText);
     const policy = evaluatePolicy(options.policy, {
       action: command.kind,
-      url: commandUrl,
+      url: policyContext.url,
       risk,
     });
     await options.recorder.record(
@@ -193,13 +199,13 @@ export const runDiscovery = async (options: {
       },
       {
         type: "policy.evaluated",
-        data: { action: command.kind, url: commandUrl, risk, result: policy },
+        data: { action: command.kind, url: policyContext.url, risk, result: policy },
       },
     );
     if (policy.decision !== "allow") throw new DiscoveryStoppedError(policy.reason, decision);
 
     const timeoutMs = Math.min(semantics.timeoutMs ?? 10_000, Math.max(1, deadline - Date.now()));
-    const result = await options.surface.execute(command, timeoutMs);
+    const result = await options.surface.execute(command, timeoutMs, policyContext);
     trace.actions.push({ command: decision.command, receipt: result.receipt });
     await options.recorder.record(
       {

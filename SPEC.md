@@ -72,9 +72,9 @@ Each step declares:
 - structured reads or typed input bindings;
 - explicit branches for expected business and runtime states.
 
-Locator resolution is deterministic: candidates are tried in artifact order and the first uniquely visible match wins. Missing and ambiguous targets are different errors.
+Locator resolution is deterministic: candidates are tried in artifact order and the first candidate matching exactly one element wins; interactive actions then enforce Playwright actionability. Attempt receipts preserve match counts for missing and ambiguous diagnostics.
 
-Input bindings use `{{camelCaseName}}` templates. Values are validated for type, length, range, and pattern before launch. Sample values observed during discovery are rejected if they leak into the compiled artifact.
+Input bindings use `{{inputs.camelCaseName}}` templates. Values are validated for type, length, range, and pattern before launch. The exact values used by discovery are the compiler's parameterization and leak-check source of truth.
 
 ## 5. Discovery protocol
 
@@ -84,14 +84,14 @@ Discovery is a genuine observe–decide–act loop:
 2. Observe the active page and frames as a compact structured snapshot.
 3. Send the snapshot, safe prior history, and the reviewed next-step intent to the model.
 4. Validate the structured response.
-5. Require its action kind and semantic target to match the reviewed step skeleton.
+5. Require its action kind to match the reviewed step skeleton and its result to satisfy that step's reviewed checkpoint.
 6. Apply origin, route, command, and risk policy to the actual acting frame and destination.
 7. Execute the action and validate the step checkpoint.
 8. Record a redacted event and repeat until a terminal outcome.
 
 Discovery is bounded by per-step, provider-call, total-run, and maximum-step limits. Repeated state/action pairs fail as no-progress rather than looping indefinitely.
 
-The model cannot add steps, widen policy, select an irreversible final action, or write the final artifact directly. The compiler derives the artifact from the reviewed skeleton plus observed, reusable locator data, then signs the canonical representation.
+The model cannot add steps, widen policy, select an irreversible final action, or write the final artifact directly. The compiler derives the artifact from the reviewed skeleton plus observed, reusable locator data, then computes its canonical digest.
 
 ## 6. Deterministic replay
 
@@ -101,7 +101,7 @@ Replay performs the following sequence before browser launch:
 2. Compute the canonical artifact digest for result and evidence correlation.
 3. Intersect artifact policy with runtime policy.
 4. Reject incompatible origins, routes, commands, or risks.
-5. Execute steps in artifact order using only declared locators, conditions, retries, and branches.
+5. Execute steps in artifact order using only declared locators, conditions, and recovery branches.
 6. Validate structured output before returning it.
 
 Replay imports no model client and records `modelCalls: 0`. It has no fallback path to discovery or free-form reasoning.
@@ -119,9 +119,11 @@ Terminal results use one of three categories:
 The effective policy is always the narrower intersection of artifact and runtime constraints.
 
 - Only reviewed origins and exact, parameterized, or explicitly wildcarded routes are permitted.
-- Navigation and subresource requests are checked across all frames.
+- HTTP and WebSocket traffic is checked across all frames, and service workers are blocked.
 - The acting frame URL is checked immediately before every command.
-- Command risk is independently derived at runtime, so an artifact cannot understate risk.
+- Live element semantics and built-in command heuristics impose a runtime risk floor.
+- The inspected target and destination are fingerprinted, rechecked, and acted on through the same element handle.
+- Route and action ceilings are checked independently of risk classification.
 - Downloads are disabled.
 - The demo stops before the final `Create` action; that route and action are absent from both allowlists.
 - Event payloads, model history, results, and evidence are recursively redacted.
@@ -158,7 +160,7 @@ The submission deliberately excludes a database, queue, distributed scheduler, a
 npm ci
 npm run browser:install
 npm run verify
-npm run discover -- --member-id 12345
+npm run discover -- --driver openai
 env -u OPENAI_API_KEY npm run replay -- --member-id 12345
 env -u OPENAI_API_KEY npm run demo
 ```

@@ -42,6 +42,46 @@ export type SurfaceActionResult = {
   value?: unknown;
 };
 
+export type SurfacePolicyContext = {
+  url: string;
+  fingerprint: string;
+  riskText: string;
+};
+
+type TargetInspection = {
+  tag: string;
+  type: string;
+  name: string;
+  text: string;
+  destination: string;
+};
+
+const inspectElement = (element: Element): TargetInspection => {
+  const link = element.closest("a[href]");
+  const form = element.closest("form");
+  const destination =
+    link instanceof HTMLAnchorElement && !link.hasAttribute("download")
+      ? link.href
+      : form instanceof HTMLFormElement
+        ? new URL(
+            element.getAttribute("formaction") ?? form.action ?? document.URL,
+            document.baseURI,
+          ).href
+        : document.URL;
+  const value = element instanceof HTMLInputElement ? element.value : "";
+  return {
+    tag: element.tagName.toLowerCase(),
+    type: element.getAttribute("type") ?? "",
+    name: element.getAttribute("name") ?? "",
+    text: [element.getAttribute("aria-label") ?? "", element.textContent ?? "", value]
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500),
+    destination,
+  };
+};
+
 export class LocatorResolutionError extends Error {
   readonly attempts: LocatorAttempt[];
 
@@ -128,30 +168,24 @@ export class PlaywrightSurface {
     });
   }
 
-  async execute(command: Command, timeoutMs = 10_000): Promise<SurfaceActionResult> {
+  async execute(
+    command: Command,
+    timeoutMs = 10_000,
+    expectedPolicy?: SurfacePolicyContext,
+  ): Promise<SurfaceActionResult> {
     return this.session.withAutomation(async (page) =>
-      this.#executeOnPage(page, command, timeoutMs),
+      this.#executeOnPage(page, command, timeoutMs, expectedPolicy),
     );
   }
 
-  async policyUrl(command: Command): Promise<string> {
+  async policyContext(command: Command): Promise<SurfacePolicyContext> {
     return this.session.withAutomation(async (page) => {
-      if (command.kind === "navigate") return command.url;
-      if (command.kind === "wait") return page.url();
+      if (command.kind === "navigate") return this.#basicPolicyContext(command.url, command.url);
+      if (command.kind === "wait") return this.#basicPolicyContext(page.url(), page.url());
 
       const resolved = await this.#resolveTarget(command.target);
-      if (command.kind !== "click") return resolved.root.url();
-      return resolved.locator.evaluate((element) => {
-        const link = element.closest("a[href]");
-        if (link instanceof HTMLAnchorElement && !link.hasAttribute("download")) return link.href;
-
-        const form = element.closest("form");
-        if (form instanceof HTMLFormElement) {
-          const action = element.getAttribute("formaction") ?? form.action;
-          return new URL(action || document.URL, document.baseURI).href;
-        }
-        return document.URL;
-      });
+      const inspection = await resolved.locator.evaluate(inspectElement);
+      return this.#targetPolicyContext(command.kind, resolved.root.url(), inspection);
     });
   }
 
@@ -185,6 +219,7 @@ export class PlaywrightSurface {
     page: Page,
     command: Command,
     timeoutMs: number,
+    expectedPolicy?: SurfacePolicyContext,
   ): Promise<SurfaceActionResult> {
     const startedAt = performance.now();
     let actionRoot: LocatorRoot = page;
@@ -194,14 +229,18 @@ export class PlaywrightSurface {
 
     switch (command.kind) {
       case "navigate":
+        this.#assertPolicyContext(
+          expectedPolicy,
+          this.#basicPolicyContext(command.url, command.url),
+        );
         await page.goto(command.url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
         break;
       case "click": {
-        const resolved = await this.#resolveTarget(command.target);
+        const resolved = await this.#resolveForExecution(command, expectedPolicy);
         actionRoot = resolved.root;
         urlBefore = actionRoot.url();
         resolution = resolved.resolution;
-        const expectsNavigation = await resolved.locator.evaluate((element) => {
+        const expectsNavigation = await resolved.handle.evaluate((element) => {
           const tag = element.tagName.toLowerCase();
           if (tag === "a") {
             return element.hasAttribute("href") && !element.hasAttribute("download");
@@ -216,37 +255,38 @@ export class PlaywrightSurface {
               .waitForNavigation({ waitUntil: "domcontentloaded", timeout: timeoutMs })
               .catch(() => null)
           : undefined;
-        await resolved.locator.click({ timeout: timeoutMs });
+        await resolved.handle.click({ timeout: timeoutMs });
         await navigation;
         await page.waitForLoadState("domcontentloaded").catch(() => undefined);
         break;
       }
       case "fill": {
-        const resolved = await this.#resolveTarget(command.target);
+        const resolved = await this.#resolveForExecution(command, expectedPolicy);
         actionRoot = resolved.root;
         urlBefore = actionRoot.url();
         resolution = resolved.resolution;
-        await resolved.locator.fill(command.value, { timeout: timeoutMs });
+        await resolved.handle.fill(command.value, { timeout: timeoutMs });
         break;
       }
       case "select": {
-        const resolved = await this.#resolveTarget(command.target);
+        const resolved = await this.#resolveForExecution(command, expectedPolicy);
         actionRoot = resolved.root;
         urlBefore = actionRoot.url();
         resolution = resolved.resolution;
-        await resolved.locator.selectOption(command.value, { timeout: timeoutMs });
+        await resolved.handle.selectOption(command.value, { timeout: timeoutMs });
         break;
       }
       case "read": {
-        const resolved = await this.#resolveTarget(command.target);
+        const resolved = await this.#resolveForExecution(command, expectedPolicy);
         actionRoot = resolved.root;
         urlBefore = actionRoot.url();
         resolution = resolved.resolution;
-        const text = (await resolved.locator.innerText({ timeout: timeoutMs })).trim();
+        const text = (await resolved.handle.innerText()).trim();
         value = command.parse === "currency" ? parseCurrency(text) : text;
         break;
       }
       case "wait": {
+        this.#assertPolicyContext(expectedPolicy, this.#basicPolicyContext(page.url(), page.url()));
         const timeoutAt = Date.now() + timeoutMs;
         while (Date.now() < timeoutAt) {
           if ((await this.#evaluateCondition(command.until)).passed) break;
@@ -271,6 +311,54 @@ export class PlaywrightSurface {
       },
       ...(value === undefined ? {} : { value }),
     };
+  }
+
+  async #resolveForExecution(
+    command: Exclude<Command, { kind: "navigate" | "wait" }>,
+    expectedPolicy: SurfacePolicyContext | undefined,
+  ) {
+    const resolved = await this.#resolveTarget(command.target);
+    const handle = await resolved.locator.elementHandle();
+    if (!handle) {
+      throw new Error(`Resolved target detached before action: ${command.target.description}`);
+    }
+    const inspection = await handle.evaluate(inspectElement);
+    this.#assertPolicyContext(
+      expectedPolicy,
+      this.#targetPolicyContext(command.kind, resolved.root.url(), inspection),
+    );
+    return { ...resolved, handle };
+  }
+
+  #basicPolicyContext(url: string, riskText: string): SurfacePolicyContext {
+    return {
+      url,
+      riskText,
+      fingerprint: sha256(Buffer.from(JSON.stringify({ url, riskText }))),
+    };
+  }
+
+  #targetPolicyContext(
+    command: Exclude<Command, { kind: "navigate" | "wait" }>["kind"],
+    rootUrl: string,
+    inspection: TargetInspection,
+  ): SurfacePolicyContext {
+    const url = command === "click" ? inspection.destination : rootUrl;
+    const riskText = [inspection.tag, inspection.name, inspection.text, url].join(" ");
+    return {
+      url,
+      riskText,
+      fingerprint: sha256(Buffer.from(JSON.stringify({ command, rootUrl, inspection }))),
+    };
+  }
+
+  #assertPolicyContext(
+    expected: SurfacePolicyContext | undefined,
+    actual: SurfacePolicyContext,
+  ): void {
+    if (expected && (expected.url !== actual.url || expected.fingerprint !== actual.fingerprint)) {
+      throw new Error("Target changed after policy evaluation; action refused");
+    }
   }
 
   async #evaluateCondition(condition: Condition): Promise<{

@@ -147,18 +147,27 @@ export const replayArtifact = async (options: {
     stepId: string,
     timeoutMs = 10_000,
   ) => {
-    const url = await options.surface.policyUrl(command);
-    const effectiveRisk = effectiveCommandRisk(command, risk);
-    const decision = evaluatePolicy(policy, { action: command.kind, url, risk: effectiveRisk });
+    const policyContext = await options.surface.policyContext(command);
+    const effectiveRisk = effectiveCommandRisk(command, risk, policyContext.riskText);
+    const decision = evaluatePolicy(policy, {
+      action: command.kind,
+      url: policyContext.url,
+      risk: effectiveRisk,
+    });
     await options.recorder.record(
       { phase: "replay", actor: { type: "system" }, capabilityId: artifact.id, stepId },
       {
         type: "policy.evaluated",
-        data: { action: command.kind, url, risk: effectiveRisk, result: decision },
+        data: {
+          action: command.kind,
+          url: policyContext.url,
+          risk: effectiveRisk,
+          result: decision,
+        },
       },
     );
     if (decision.decision !== "allow") throw new PolicyRejectedError(decision.reason);
-    const action = await options.surface.execute(command, timeoutMs);
+    const action = await options.surface.execute(command, timeoutMs, policyContext);
     await options.recorder.record(
       { phase: "replay", actor: { type: "automation" }, capabilityId: artifact.id, stepId },
       {

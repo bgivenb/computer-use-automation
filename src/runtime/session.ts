@@ -11,6 +11,26 @@ export type SessionOptions = {
   viewport?: { width: number; height: number };
 };
 
+export const networkUrlAllowed = (
+  rawUrl: string,
+  allowedOrigins: ReadonlySet<string>,
+  allowedRoutes: readonly string[],
+): boolean => {
+  const url = new URL(rawUrl);
+  if (url.protocol === "about:" || url.protocol === "data:") return true;
+
+  const normalizedOrigin =
+    url.protocol === "ws:"
+      ? `http://${url.host}`
+      : url.protocol === "wss:"
+        ? `https://${url.host}`
+        : url.origin;
+  return (
+    allowedOrigins.has(normalizedOrigin) &&
+    allowedRoutes.some((candidate) => routeMatches(url.pathname, candidate))
+  );
+};
+
 export class ControllerLeaseError extends Error {
   readonly code = "controller_lease";
 
@@ -53,20 +73,25 @@ export class RunSession {
     const browser = await chromium.launch({ headless: options.headless ?? true });
     const context = await browser.newContext({
       acceptDownloads: false,
+      serviceWorkers: "block",
       viewport: options.viewport ?? { width: 1440, height: 900 },
     });
 
     await context.route("**/*", async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      const alwaysSafeProtocol = url.protocol === "about:" || url.protocol === "data:";
-      const allowedPath = allowedRoutes.some((candidate) => routeMatches(url.pathname, candidate));
-      if (alwaysSafeProtocol || (allowedOrigins.has(url.origin) && allowedPath)) {
+      if (networkUrlAllowed(route.request().url(), allowedOrigins, allowedRoutes)) {
         await route.continue();
         return;
       }
 
       await route.abort("blockedbyclient");
+    });
+
+    await context.routeWebSocket(/.*/, async (socket) => {
+      if (networkUrlAllowed(socket.url(), allowedOrigins, allowedRoutes)) {
+        socket.connectToServer();
+        return;
+      }
+      await socket.close({ code: 1008, reason: "Blocked by runtime policy" });
     });
 
     const page = await context.newPage();

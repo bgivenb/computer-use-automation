@@ -1,4 +1,5 @@
 import { relative, resolve } from "node:path";
+import { validateInputs } from "../artifact/bind.js";
 import {
   artifactDigest,
   compileArtifact,
@@ -33,8 +34,9 @@ export const discoverCapability = async (options: {
   runsDirectory?: string;
   headless?: boolean;
 }): Promise<{ compiled: CompiledArtifact; summary: DiscoverySummary; runDirectory: string }> => {
+  const inputs = validateInputs(options.profile.inputs, options.inputValues);
   const redaction = {
-    sensitiveValues: options.inputValues as Record<string, string | number | boolean>,
+    sensitiveValues: inputs,
   };
   const runtimePermissions = runtimePermissionsFor(options.origin);
   const runtime = await createRuntimeContext({
@@ -56,13 +58,13 @@ export const discoverCapability = async (options: {
       runId: runtime.runId,
       goal: options.goal,
       profile: options.profile,
-      inputValues: options.inputValues,
+      inputValues: inputs,
       model: options.driver,
       surface: runtime.surface,
       policy,
       recorder: runtime.recorder,
     });
-    const compiled = compileArtifact(discovery.trace, options.profile);
+    const compiled = compileArtifact(discovery.trace, options.profile, inputs);
     await writeArtifact(options.artifactPath, compiled.artifact);
     await runtime.recorder.record(
       { phase: "compile", actor: { type: "system" }, capabilityId: compiled.artifact.id },

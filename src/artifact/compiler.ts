@@ -94,6 +94,7 @@ export const assertReusableCommand = (command: Command): void => {
 export const compileArtifact = (
   trace: DiscoveryTrace,
   profile: CapabilityProfile,
+  inputSamples: Readonly<Record<string, string | number | boolean>> = profile.inputSamples,
 ): CompiledArtifact => {
   if (trace.actions.length !== profile.steps.length) {
     throw new Error(
@@ -128,7 +129,7 @@ export const compileArtifact = (
       return {
         id: `step-${String(index + 1).padStart(2, "0")}`,
         description: semantics.description,
-        command: parameterizeCommand(action.command, profile.inputSamples),
+        command: parameterizeCommand(action.command, inputSamples),
         expect: semantics.expect,
         ...(semantics.onObserved === undefined ? {} : { onObserved: semantics.onObserved }),
         timeoutMs: semantics.timeoutMs ?? 10_000,
@@ -139,7 +140,7 @@ export const compileArtifact = (
   });
 
   const serialized = JSON.stringify(artifact);
-  for (const [name, sample] of Object.entries(profile.inputSamples)) {
+  for (const [name, sample] of Object.entries(inputSamples)) {
     if (String(sample).length >= 3 && serialized.includes(String(sample))) {
       throw new Error(`Compiler leaked concrete sample for input ${name}`);
     }

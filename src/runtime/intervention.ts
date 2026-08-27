@@ -192,6 +192,9 @@ export class InterventionCoordinator {
   async abort(id: string, reason: string): Promise<InterventionRequest> {
     const pending = this.#require(id);
     return this.#serialize(pending, async () => {
+      if (this.#pending.get(id) !== pending || pending.request.status === "resumed") {
+        throw new Error(`Intervention ${id} is no longer pending`);
+      }
       if (pending.session.owner === "human") pending.session.releaseHuman();
       pending.request.status = "aborted";
       this.#record("intervention_aborted", pending.request, reason);

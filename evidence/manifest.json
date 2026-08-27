@@ -4,7 +4,7 @@
   "syntheticDataOnly": true,
   "note": "Genuine OpenAI Responses discovery on the live synthetic UI, followed by credential-free deterministic replay evidence.",
   "generatedAt": "2026-08-27T03:56:01Z",
-  "sourceRevision": "working-tree-capture",
+  "sourceRevision": "ccf9a72cb3f2756d5b69535a33a7475ad64a48f9",
   "scenarios": [
     {
       "id": "provider-discovery",

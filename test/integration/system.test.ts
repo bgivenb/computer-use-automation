@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type DiscoverySummary, discoverCapability } from "../../src/app/discover.js";
 import { prepareReplay, replayCompiled } from "../../src/app/replay.js";
-import { runtimePermissionsFor } from "../../src/app/runtime.js";
-import type { CompiledArtifact } from "../../src/artifact/compiler.js";
+import { createRuntimeContext, runtimePermissionsFor } from "../../src/app/runtime.js";
+import { artifactDigest, type CompiledArtifact } from "../../src/artifact/compiler.js";
 import {
   createDemoProfile,
   demoTargets,
@@ -30,10 +30,12 @@ beforeAll(async () => {
   demo = await startDemoServer({ port: 0 });
   artifactPath = join(temporaryRoot, "artifacts", "prepare-savings-subaccount.v1.json");
 
+  const profile = createDemoProfile(demo.origin);
+  profile.success.push({ kind: "text", includes: "{{inputs.accountNickname}}" });
   const discovery = await discoverCapability({
     goal: GOAL,
     origin: demo.origin,
-    profile: createDemoProfile(demo.origin),
+    profile,
     inputValues: {
       memberId: DEMO_MEMBER_ID,
       accountNickname: DEMO_ACCOUNT_NICKNAME,
@@ -88,7 +90,8 @@ describe("browser system", () => {
         savingsBalance: 12_450.67,
       },
     });
-    expect(replay.signature.at(-1)).toBe("success|check:visible|true");
+    expect(replay.signature).toContain("success|check:visible|true");
+    expect(replay.signature.at(-1)).toBe("success|check:text|true");
   }, 30_000);
 
   it("returns member-not-found as a business outcome", async () => {
@@ -264,7 +267,7 @@ describe("browser system", () => {
     });
 
     const replay = await runReplay(
-      { artifact, sha256: "runtime-recomputes-the-digest" },
+      { artifact, sha256: artifactDigest(artifact) },
       { memberId: "12345", accountNickname: "Must Not Exist" },
     );
 
@@ -289,6 +292,31 @@ describe("browser system", () => {
     ).rejects.toThrow("does not trust the artifact entry URL");
   });
 
+  it("refuses an action when the live target changes after policy evaluation", async () => {
+    const state = requireSystemState();
+    const runtime = await createRuntimeContext({
+      runtimePermissions: runtimePermissionsFor(state.demo.origin),
+      runsDirectory: join(state.temporaryRoot, "policy-context-runs"),
+      headless: true,
+    });
+    const command = { kind: "fill" as const, target: demoTargets.memberId, value: "12345" };
+
+    try {
+      await runtime.surface.execute({ kind: "navigate", url: state.demo.origin });
+      const policyContext = await runtime.surface.policyContext(command);
+      await runtime.session.page
+        .frameLocator('iframe[title="Member servicing workspace"]')
+        .locator('input[name="memberId"]')
+        .evaluate((element) => element.setAttribute("aria-label", "Changed after review"));
+
+      await expect(runtime.surface.execute(command, 2_000, policyContext)).rejects.toThrow(
+        "Target changed after policy evaluation",
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it("validates extracted outputs against the declared contract", async () => {
     const state = requireSystemState();
     const artifact = structuredClone(state.compiled.artifact);
@@ -301,7 +329,7 @@ describe("browser system", () => {
     };
 
     const replay = await runReplay(
-      { artifact, sha256: "runtime-recomputes-the-digest" },
+      { artifact, sha256: artifactDigest(artifact) },
       { memberId: "12345", accountNickname: "Contract Check" },
     );
 
@@ -309,6 +337,19 @@ describe("browser system", () => {
     if (replay.result.status !== "failure") throw new Error("Expected contract failure");
     expect(replay.result.message).toContain("savingsBalance");
   }, 30_000);
+
+  it("rejects a compiled artifact whose content no longer matches its digest", async () => {
+    const state = requireSystemState();
+    const artifact = structuredClone(state.compiled.artifact);
+    artifact.description = "Mutated after compilation";
+
+    await expect(
+      runReplay(
+        { artifact, sha256: state.compiled.sha256 },
+        { memberId: "12345", accountNickname: "Integrity Check" },
+      ),
+    ).rejects.toThrow("digest does not match");
+  });
 });
 
 async function runReplay(artifact: CompiledArtifact, inputValues: Record<string, unknown>) {

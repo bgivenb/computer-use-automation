@@ -110,10 +110,12 @@ screenshot endpoint and event stream rather than a durable intervention store.
 
 Policy is an intersection of caller-supplied runtime and artifact allowlists for origins, parameterized
 routes, and action types, so an artifact cannot widen the runtime ceiling. The browser context
-independently aborts every request outside those origins and routes, disables downloads, and exposes no
-upload, clipboard, arbitrary script, or general keyboard-shortcut command. Policy preflights the acting
-iframe or form destination. Runtime risk inference is a floor that artifact labels cannot downgrade;
-the saved capability stops at **Ready for final approval** and contains no **Create account** command.
+blocks service workers, rejects HTTP and WebSocket traffic outside those origins and routes, disables
+downloads, and exposes no upload, clipboard, arbitrary script, or general keyboard-shortcut command.
+Policy inspects the live element and acting iframe or form destination, derives a runtime risk floor,
+then fingerprints and rechecks that policy context on the element handle used for the action. The
+independent route ceiling further limits blast radius. The saved capability stops at **Ready for final
+approval**, and neither the final route nor a **Create account** command is allowed.
 
 Inputs and outputs carry sensitivity labels. The event recorder deep-redacts invocation values,
 sensitive output keys, credentials, tokens, email, SSN, card, member, account, and routing patterns
