@@ -170,3 +170,9 @@ and the zero-model replay boundary.
 - `src/evidence/` - evidence verifier and tracked-text secret scanner
 - [`REPORT.md`](./REPORT.md) - design decisions, limits, and explicit cuts
 - [`SPEC.md`](./SPEC.md) - executable product and acceptance specification for the built slice
+
+## Scope and license
+
+This is an independent reference implementation built with synthetic data. It is not employer or client code, and it does not connect to a real financial institution.
+
+No project-wide open-source license has been granted. Unless a file or dependency states otherwise, the source is publicly viewable but may not be reused or redistributed.
