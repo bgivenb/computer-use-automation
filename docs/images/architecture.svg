@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Computer-use automation architecture</title>
+  <desc id="desc">A model-guided discovery run produces a typed capability artifact. Deterministic replay executes the artifact through policy and evidence controls, with human handoff for unexpected states.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .label { font: 700 21px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #0f172a; }
+      .small { font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #475569; }
+      .tiny { font: 700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #2563eb; letter-spacing: 1.2px; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .control { fill: #eff6ff; stroke: #60a5fa; stroke-width: 2; rx: 12; }
+      .arrow { stroke: #2563eb; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="470" rx="22" fill="#f8fafc"/>
+  <text x="42" y="48" class="tiny">MODEL-GUIDED DISCOVERY</text>
+  <rect x="42" y="70" width="240" height="150" class="box"/>
+  <text x="66" y="111" class="label">Observe + decide</text>
+  <text x="66" y="145" class="small">OpenAI or scripted driver</text>
+  <text x="66" y="174" class="small">Playwright browser surface</text>
+  <text x="66" y="203" class="small">Structured action trace</text>
+
+  <path d="M282 145 H350" class="arrow"/>
+  <rect x="350" y="70" width="240" height="150" class="box"/>
+  <text x="374" y="111" class="label">Compile</text>
+  <text x="374" y="145" class="small">Parameterize inputs</text>
+  <text x="374" y="174" class="small">Order locator candidates</text>
+  <text x="374" y="203" class="small">Declare safe branches</text>
+
+  <path d="M590 145 H658" class="arrow"/>
+  <rect x="658" y="70" width="240" height="150" class="control"/>
+  <text x="682" y="111" class="label">Capability artifact</text>
+  <text x="682" y="145" class="small">Typed + schema validated</text>
+  <text x="682" y="174" class="small">Content-addressed</text>
+  <text x="682" y="203" class="small">Reviewable before use</text>
+
+  <path d="M898 145 H966" class="arrow"/>
+  <rect x="966" y="70" width="192" height="150" class="box"/>
+  <text x="990" y="111" class="label">Replay</text>
+  <text x="990" y="145" class="small">No model calls</text>
+  <text x="990" y="174" class="small">Ordered commands</text>
+  <text x="990" y="203" class="small">Declared recovery</text>
+
+  <text x="42" y="285" class="tiny">SHARED RUNTIME CONTROLS</text>
+  <rect x="42" y="307" width="250" height="112" class="control"/>
+  <text x="66" y="350" class="label">Policy</text>
+  <text x="66" y="383" class="small">Routes, actions, checkpoints</text>
+  <rect x="324" y="307" width="250" height="112" class="control"/>
+  <text x="348" y="350" class="label">Evidence</text>
+  <text x="348" y="383" class="small">Events, receipts, screenshots</text>
+  <rect x="606" y="307" width="250" height="112" class="control"/>
+  <text x="630" y="350" class="label">Redaction</text>
+  <text x="630" y="383" class="small">Sensitive-value boundaries</text>
+  <rect x="888" y="307" width="270" height="112" class="control"/>
+  <text x="912" y="350" class="label">Human handoff</text>
+  <text x="912" y="383" class="small">Lease transfer + safe resume</text>
+</svg>

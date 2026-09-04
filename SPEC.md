@@ -152,7 +152,7 @@ Every run writes structured JSONL events and a terminal result. Failures capture
 
 The artifact's `surface` discriminator is currently `web`; a desktop adapter can preserve the runner contracts while introducing desktop-specific locator and policy schemas. Tenant policy can be loaded independently and intersected with the validated artifact at runtime. Artifact revisions carry a canonical digest in results and evidence and can be placed behind approval and rollout controls.
 
-The submission deliberately excludes a database, queue, distributed scheduler, authentication service, generalized visual agent, drag/drop, file upload, arbitrary JavaScript execution, and irreversible transaction support. Those additions would not strengthen the required discovery/replay proof.
+This reference implementation deliberately excludes a database, queue, distributed scheduler, authentication service, generalized visual agent, drag/drop, file upload, arbitrary JavaScript execution, and irreversible transaction support. Those additions would not strengthen the discovery/replay proof.
 
 ## 10. Acceptance commands
 

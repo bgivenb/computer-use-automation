@@ -75,7 +75,7 @@ locator for a high-risk action.
 
 The implementation is web-only today: runners are typed directly to `PlaywrightSurface`, and the
 artifact's surface discriminator is `web`. Extracting a formal `SurfaceAdapter` interface and adding a
-desktop discriminator is the next boundary change; no desktop support is implied by this submission.
+desktop discriminator is the next boundary change; no desktop support is implied by this reference implementation.
 
 For tenant reuse, the artifact already identifies a vendor family and version, but its entry origin and
 permissions are concrete. At scale I would store an approved base capability per vendor/version range

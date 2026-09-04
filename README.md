@@ -1,11 +1,37 @@
 # Computer-Use Automation System
 
-A compact TypeScript/Playwright vertical slice for turning one model-driven UI run into a typed,
-reviewable capability and replaying it without model decisions.
+[![CI](https://github.com/bgivenb/interface-ai-computer-use/actions/workflows/ci.yml/badge.svg)](https://github.com/bgivenb/interface-ai-computer-use/actions/workflows/ci.yml)
 
-> **Submission status:** complete. `/evidence/` contains a genuine OpenAI Responses discovery over
-> the live synthetic UI, its compiled artifact, and five credential-free deterministic replays. The
-> scripted driver remains a test fixture and is never represented as provider evidence.
+A production-minded TypeScript and Playwright reference for turning one model-guided UI discovery
+run into a typed, reviewable capability—and replaying it later without model decisions.
+
+The project focuses on the hard parts of dependable computer use: generated element IDs, nested
+tables and frames, explicit policy boundaries, deterministic recovery, evidence integrity, and
+same-session human intervention. The demo uses synthetic data and a deliberately awkward legacy
+bank-servicing interface.
+
+![Architecture: discovery compiles a typed artifact for deterministic replay, surrounded by policy, evidence, redaction, and human-handoff controls](docs/images/architecture.svg)
+
+## Why this design
+
+- **Discovery and execution are separate.** A model can explore once; repeat runs consume the
+  reviewed artifact and report `modelCalls: 0`.
+- **The artifact is the control plane.** Inputs, locator candidates, allowed branches, recovery, and
+  checkpoints are typed and schema validated.
+- **Evidence is verifiable.** Events, screenshots, manifests, and SHA-256 digests make the run
+  inspectable without preserving credentials.
+- **Unexpected states stop safely.** Automation releases its lease before a human takes control, and
+  resume is refused until the declared checkpoint passes.
+
+## Proof of behavior
+
+| Review boundary | Same-session human handoff |
+| --- | --- |
+| ![Synthetic account creation paused before the irreversible action](evidence/discovery/screenshots/009-discovery-8.png) | ![Synthetic legacy interface requesting human acknowledgement](evidence/handoff/screenshots/001-handoff-step-03.png) |
+
+`/evidence/` contains a genuine OpenAI Responses discovery over the live synthetic UI, its compiled
+artifact, and five credential-free deterministic replays. The scripted driver remains an offline
+test fixture and is never represented as provider evidence.
 
 ## What the demo does
 
@@ -21,16 +47,6 @@ irreversible **Create account** action.
 | `77777` | One transient detail failure | Declared recovery, then `success` |
 | `88888` | Permission denial | Non-retryable `failure / permission` |
 | `99999` | Unexpected host notice | Same-session human handoff, then `success` |
-
-```text
-goal -> ModelDriver -> discovery loop -> successful action trace
-                                      -> compiler -> capability artifact v1
-
-inputs + artifact -> deterministic replay -> Playwright surface -> legacy demo
-                         |                     |
-                         +-> policy + events <-+
-                         +-> intervention coordinator <-> operator
-```
 
 Discovery and replay share contracts, policy, redaction, event recording, and the browser surface.
 Only discovery receives a `ModelDriver`. Replay executes the artifact's ordered commands and declared
