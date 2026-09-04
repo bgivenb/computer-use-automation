@@ -175,4 +175,4 @@ and the zero-model replay boundary.
 
 This is an independent reference implementation built with synthetic data. It is not employer or client code, and it does not connect to a real financial institution.
 
-No project-wide open-source license has been granted. Unless a file or dependency states otherwise, the source is publicly viewable but may not be reused or redistributed.
+Licensed under the [MIT License](LICENSE). Third-party dependencies remain under their respective licenses.
