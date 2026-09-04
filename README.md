@@ -1,6 +1,6 @@
 # Computer-Use Automation System
 
-[![CI](https://github.com/bgivenb/interface-ai-computer-use/actions/workflows/ci.yml/badge.svg)](https://github.com/bgivenb/interface-ai-computer-use/actions/workflows/ci.yml)
+[![CI](https://github.com/bgivenb/computer-use-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/bgivenb/computer-use-automation/actions/workflows/ci.yml)
 
 A production-minded TypeScript and Playwright reference for turning one model-guided UI discovery
 run into a typed, reviewable capability—and replaying it later without model decisions.
@@ -57,8 +57,8 @@ branches directly and reports `modelCalls: 0`.
 Requirements: Node.js 22+, npm, and a Chromium build installed by Playwright.
 
 ```bash
-git clone https://github.com/bgivenb/interface-ai-computer-use.git
-cd interface-ai-computer-use
+git clone https://github.com/bgivenb/computer-use-automation.git
+cd computer-use-automation
 npm ci
 npm run browser:install
 ```
