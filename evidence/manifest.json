@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "status": "complete",
   "syntheticDataOnly": true,
-  "note": "Genuine OpenAI Responses discovery on the live synthetic UI, followed by credential-free deterministic replay evidence.",
+  "note": "Genuine OpenAI Responses discovery on the live synthetic UI, followed by credential-free deterministic replay evidence. Added release exploration and changed-input replay; per-scenario sourceRevision overrides the original collection revision.",
   "generatedAt": "2026-08-27T03:56:01Z",
   "sourceRevision": "ccf9a72cb3f2756d5b69535a33a7475ad64a48f9",
   "scenarios": [
@@ -188,6 +188,98 @@
           "path": "evidence/handoff/screenshots/001-handoff-step-03.png",
           "sha256": "6d8cda99584c4b031ce32112d70e93d5badc59ae74c430479d7eb8026abe1edc",
           "role": "screenshot"
+        }
+      ]
+    },
+    {
+      "id": "provider-exploration",
+      "kind": "discovery",
+      "runId": "adb9d4fe-96b5-4f3e-b8d6-8c91dbeeae50",
+      "command": "node --env-file=.env --import tsx src/cli.ts discover --driver openai --mode explore --artifact .runs/exploration-release.json",
+      "expectedStatus": "success",
+      "modelCalls": 9,
+      "sourceRevision": "b812d3b75516b57c81522767f78927a6f153bf1a",
+      "files": [
+        {
+          "path": "evidence/exploration/events.jsonl",
+          "role": "events",
+          "sha256": "c4180c196d69ccb6b84aacbd2276cbeadb72526b3abd280f28317f485a35fdf3"
+        },
+        {
+          "path": "evidence/exploration/summary.json",
+          "role": "summary",
+          "sha256": "00ea1e1675711b665cb2c82767a4b02f0078e8cbb3b05f36cca4818bd037e2ca"
+        },
+        {
+          "path": "evidence/exploration/artifact.json",
+          "role": "artifact",
+          "sha256": "d9f24fe4de94a4c2c6d730166ae4583b33916edb3ac5404be55bab9da2585547"
+        },
+        {
+          "path": "evidence/exploration/screenshots/001-discovery-0.png",
+          "role": "screenshot",
+          "sha256": "8bd5d5859cdbcb0986c43cab7846b9887eca7d57379783b84da70b9a19b5b9dc"
+        },
+        {
+          "path": "evidence/exploration/screenshots/002-discovery-1.png",
+          "role": "screenshot",
+          "sha256": "18ef09cecd3ab2df6cd0b0f00b708400b21b5c3f93a3a147df4699633638ae33"
+        },
+        {
+          "path": "evidence/exploration/screenshots/003-discovery-2.png",
+          "role": "screenshot",
+          "sha256": "4fbdfcc0cd42dc72e73d468a255c01fadb8f06bed68fdde607f9e1b39831ba9b"
+        },
+        {
+          "path": "evidence/exploration/screenshots/004-discovery-3.png",
+          "role": "screenshot",
+          "sha256": "d9478ead94f3f09bfd862661e32386cd8f2d10fd3baf07c0348aad3dca5a499c"
+        },
+        {
+          "path": "evidence/exploration/screenshots/005-discovery-4.png",
+          "role": "screenshot",
+          "sha256": "d9478ead94f3f09bfd862661e32386cd8f2d10fd3baf07c0348aad3dca5a499c"
+        },
+        {
+          "path": "evidence/exploration/screenshots/006-discovery-5.png",
+          "role": "screenshot",
+          "sha256": "c1111df7e0612bee43e7458ebe9f8f16de20e9b1108e078020e5f253e242bea2"
+        },
+        {
+          "path": "evidence/exploration/screenshots/007-discovery-6.png",
+          "role": "screenshot",
+          "sha256": "9e533cafe660c4a0f2cf1faf81c5ebb5e319b4c0831ffa3b09f6f7de562f6882"
+        },
+        {
+          "path": "evidence/exploration/screenshots/008-discovery-7.png",
+          "role": "screenshot",
+          "sha256": "db1048c97f6043f93b38e85109b50bfcab2efb0b636c4ef4fce024530083f773"
+        },
+        {
+          "path": "evidence/exploration/screenshots/009-discovery-8.png",
+          "role": "screenshot",
+          "sha256": "db1048c97f6043f93b38e85109b50bfcab2efb0b636c4ef4fce024530083f773"
+        }
+      ]
+    },
+    {
+      "id": "exploration-model-free-replay",
+      "kind": "replay-success",
+      "runId": "c9742e93-2809-40b2-b411-f23e1b826dac",
+      "command": "env -u OPENAI_API_KEY node --import tsx src/cli.ts replay --artifact .runs/exploration-release.json --member-id 12345 --nickname 'Reserve Fund'",
+      "expectedStatus": "success",
+      "modelCalls": 0,
+      "sourceRevision": "b812d3b75516b57c81522767f78927a6f153bf1a",
+      "files": [
+        {
+          "path": "evidence/exploration-replay/events.jsonl",
+          "role": "events",
+          "sha256": "54c7c605db5388fcf18a0e7fa5f1e8c5b264b8afa54e1916318cb743313253bd"
+        },
+        {
+          "path": "evidence/exploration-replay/summary.json",
+          "role": "result",
+          "sha256": "63570604e47e2396a853d19fd39e88bea12f343fa2238080bf3b088f4929a930"
         }
       ]
     }

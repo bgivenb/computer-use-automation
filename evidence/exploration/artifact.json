@@ -1,0 +1,613 @@
+{
+  "schemaVersion": "1.0",
+  "id": "prepare-savings-subaccount",
+  "revision": 1,
+  "name": "Prepare savings sub-account",
+  "description": "Look up a synthetic member, return their savings data, and prepare a new savings sub-account through the safe review checkpoint.",
+  "discoveryRunId": "adb9d4fe-96b5-4f3e-b8d6-8c91dbeeae50",
+  "app": {
+    "family": "northstar-core",
+    "version": "7-demo",
+    "surface": "web"
+  },
+  "entryUrl": "http://127.0.0.1:4173/",
+  "contract": {
+    "inputs": {
+      "memberId": {
+        "description": "Synthetic member number",
+        "sensitivity": "sensitive",
+        "type": "string",
+        "pattern": "^[0-9]{5}$"
+      },
+      "accountNickname": {
+        "description": "Nickname for the proposed savings sub-account",
+        "sensitivity": "sensitive",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      }
+    },
+    "outputs": {
+      "memberName": {
+        "value": {
+          "description": "Synthetic member display name",
+          "sensitivity": "sensitive",
+          "type": "string"
+        },
+        "from": "member-name"
+      },
+      "savingsBalance": {
+        "value": {
+          "description": "Current synthetic savings balance",
+          "sensitivity": "sensitive",
+          "type": "number",
+          "unit": "USD"
+        },
+        "from": "savings-balance"
+      }
+    },
+    "businessOutcomes": [
+      {
+        "code": "validation-rejected",
+        "description": "The host rejected the proposed account nickname."
+      },
+      {
+        "code": "member-not-found",
+        "description": "No member exists for the supplied synthetic member number."
+      }
+    ]
+  },
+  "permissions": {
+    "origins": [
+      "http://127.0.0.1:4173"
+    ],
+    "routes": [
+      "/",
+      "/search",
+      "/members/search",
+      "/members/:memberId",
+      "/members/:memberId/dismiss-interstitial",
+      "/members/:memberId/subaccounts/new",
+      "/members/:memberId/subaccounts/review"
+    ],
+    "actions": [
+      "navigate",
+      "fill",
+      "click",
+      "read",
+      "wait"
+    ]
+  },
+  "steps": [
+    {
+      "id": "step-01",
+      "description": "Begin the lookup by entering the required member identifier.",
+      "command": {
+        "kind": "fill",
+        "target": {
+          "description": "Member number input",
+          "whyRobust": "The labeled memberId field is the stable entry point for lookup.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "input[name=\"memberId\"]"
+            }
+          ]
+        },
+        "value": "{{inputs.memberId}}"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Search button",
+            "whyRobust": "The accessible button role and visible action name express intent.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "button",
+                "name": "Search",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Search",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-02",
+      "description": "Submit the member lookup for the entered member ID.",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Search button",
+          "whyRobust": "The accessible button role and visible action name express intent.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "button",
+              "name": "Search",
+              "exact": true
+            },
+            {
+              "kind": "text",
+              "text": "Search",
+              "exact": true
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Search Results heading",
+            "whyRobust": "A stable workflow heading is preferable to generated element ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Search Results",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Search Results",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-03",
+      "description": "Open the matched member record so I can read the savings balance and proceed toward the sub-account review screen.",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Open member record link",
+          "whyRobust": "The visible workflow link opens the matched member record from search results.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "text",
+              "text": "Open member record",
+              "exact": true
+            },
+            {
+              "kind": "role",
+              "role": "link",
+              "name": "Open member record",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "table.results > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Member Detail heading",
+            "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Member Detail",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Member Detail",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-04",
+      "description": "Read the required outputs from the visible member detail page before proceeding to sub-account setup.",
+      "command": {
+        "kind": "read",
+        "target": {
+          "description": "Member name value",
+          "whyRobust": "The member name is a stable cell in the detail table, independent of display text elsewhere.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "table.detail:nth-of-type(1) > tbody > tr:nth-of-type(2) > td:nth-of-type(2)"
+            }
+          ]
+        },
+        "bind": "member-name",
+        "parse": "text"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Member Detail heading",
+            "whyRobust": "The stable workflow heading is independent of tenant styling and generated ids.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Member Detail",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Member Detail",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-05",
+      "description": "Open the sub-account flow so the review screen can be reached after reading the savings balance.",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Open savings sub-account button",
+          "whyRobust": "The workflow action is the visible control for starting the sub-account creation flow.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "link",
+              "name": "Open savings sub-account",
+              "exact": true
+            },
+            {
+              "kind": "text",
+              "text": "Open savings sub-account",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "a.button"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Open Savings Sub-account heading",
+            "whyRobust": "The workflow heading is a stable checkpoint.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Open Savings Sub-account",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Open Savings Sub-account",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-06",
+      "description": "Enter the requested sub-account nickname before moving to review.",
+      "command": {
+        "kind": "fill",
+        "target": {
+          "description": "Account nickname input",
+          "whyRobust": "The labeled nickname field is the stable input for the sub-account name.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "input[name=\"accountNickname\"]"
+            }
+          ]
+        },
+        "value": "{{inputs.accountNickname}}"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Open Savings Sub-account heading",
+            "whyRobust": "The workflow heading is a stable checkpoint.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "role",
+                "role": "heading",
+                "name": "Open Savings Sub-account",
+                "exact": true
+              },
+              {
+                "kind": "text",
+                "text": "Open Savings Sub-account",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-07",
+      "description": "Advance to the review checkpoint so the remaining balance can be read there before any final approval.",
+      "command": {
+        "kind": "click",
+        "target": {
+          "description": "Continue to review button",
+          "whyRobust": "The visible workflow button advances to the safe review screen before approval.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "role",
+              "role": "button",
+              "name": "Continue to review",
+              "exact": true
+            },
+            {
+              "kind": "text",
+              "text": "Continue to review",
+              "exact": true
+            },
+            {
+              "kind": "css",
+              "selector": "button[type=\"submit\"]"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Ready for final approval checkpoint",
+            "whyRobust": "This text is the explicit safe stopping checkpoint before the irreversible action.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "text",
+                "text": "Ready for final approval",
+                "exact": true
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    },
+    {
+      "id": "step-08",
+      "description": "The review checkpoint is visible, and the remaining required output binding still needs an explicit read before finishing.",
+      "command": {
+        "kind": "read",
+        "target": {
+          "description": "Current savings balance value",
+          "whyRobust": "The balance is a stable table cell on the review screen, independent of surrounding labels.",
+          "frame": {
+            "strategies": [
+              {
+                "kind": "css",
+                "selector": "iframe[title=\"Member servicing workspace\"]"
+              }
+            ]
+          },
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "table.detail > tbody > tr:nth-of-type(3) > td:nth-of-type(2)"
+            }
+          ]
+        },
+        "bind": "savings-balance",
+        "parse": "currency"
+      },
+      "expect": [
+        {
+          "kind": "visible",
+          "target": {
+            "description": "Ready for final approval checkpoint",
+            "whyRobust": "This text is the explicit safe stopping checkpoint before the irreversible action.",
+            "frame": {
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "iframe[title=\"Member servicing workspace\"]"
+                }
+              ]
+            },
+            "strategies": [
+              {
+                "kind": "text",
+                "text": "Ready for final approval",
+                "exact": true
+              }
+            ]
+          }
+        },
+        {
+          "kind": "text",
+          "includes": "{{inputs.memberId}}"
+        },
+        {
+          "kind": "text",
+          "includes": "{{inputs.accountNickname}}"
+        }
+      ],
+      "timeoutMs": 10000,
+      "risk": "reversible"
+    }
+  ],
+  "success": [
+    {
+      "kind": "visible",
+      "target": {
+        "description": "Ready for final approval checkpoint",
+        "whyRobust": "This text is the explicit safe stopping checkpoint before the irreversible action.",
+        "frame": {
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "iframe[title=\"Member servicing workspace\"]"
+            }
+          ]
+        },
+        "strategies": [
+          {
+            "kind": "text",
+            "text": "Ready for final approval",
+            "exact": true
+          }
+        ]
+      }
+    },
+    {
+      "kind": "text",
+      "includes": "{{inputs.memberId}}"
+    },
+    {
+      "kind": "text",
+      "includes": "{{inputs.accountNickname}}"
+    }
+  ]
+}

@@ -27,3 +27,13 @@ handoff. Property tests use reproducible seeds to challenge approval invalidatio
 
 Local run files remain under `.runs/`. Curated results can be published after checking that all
 fixtures and screenshots are synthetic; do not publish arbitrary operational logs.
+
+## Published baseline
+
+The [v0.2.0 report](../benchmarks/replay-v0.2.0.json) records 27/27 expected outcomes, zero replay
+model calls, p50 383 ms and p95 574 ms on Node 26.3.0 / macOS ARM64. It was collected on
+2026-09-05 UTC against `b812d3b75516b57c81522767f78927a6f153bf1a`. The
+[scripted fixture artifact](../benchmarks/fixture-v0.2.0.json) is included and matches the report's
+artifact digest. Trial IDs identify local working logs, which are not all published; the report is a
+measurement summary, not a second full evidence archive. CI independently reruns all nine scenarios
+on Node 22 and 24. Local timings are illustrative, not latency targets.

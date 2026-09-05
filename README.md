@@ -50,9 +50,12 @@ and [evaluation methodology](docs/EVALUATION.md).
 | --- | --- |
 | ![Synthetic account creation paused before the irreversible action](evidence/discovery/screenshots/009-discovery-8.png) | ![Synthetic legacy interface requesting human acknowledgement](evidence/handoff/screenshots/001-handoff-step-03.png) |
 
-`/evidence/` contains a genuine OpenAI Responses discovery over the live synthetic UI, its compiled
-artifact, and five credential-free deterministic replays. The scripted driver remains an offline
-test fixture and is never represented as provider evidence.
+`/evidence/` preserves the original guided OpenAI recording and five replay scenarios, plus a fresh
+[exploration recording](evidence/exploration/summary.json) with nine real model calls and its
+[changed-input replay](evidence/exploration-replay/summary.json) with zero model calls. Exploration
+chose a different sequence: it read the balance at the review screen instead of the member-detail
+screen. The [measured replay baseline](docs/EVALUATION.md) covers 27 synthetic browser trials.
+Scripted fixtures are never represented as provider evidence.
 
 ## What the demo does
 

@@ -3,6 +3,12 @@
   "files": {
     "includes": ["**", "!dist", "!node_modules", "!.runs"]
   },
+  "overrides": [
+    {
+      "includes": ["evidence/**", "benchmarks/**"],
+      "formatter": { "enabled": false }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

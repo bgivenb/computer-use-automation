@@ -1,0 +1,13 @@
+{
+  "status": "success",
+  "runId": "adb9d4fe-96b5-4f3e-b8d6-8c91dbeeae50",
+  "provider": "openai-responses",
+  "model": "gpt-5.4-mini",
+  "modelCalls": 9,
+  "artifactId": "prepare-savings-subaccount",
+  "artifactRevision": 1,
+  "artifactSha256": "71af902dee80fd61e25c9f5b7b4605f448b12d3054b846ff465e39e6818a46a7",
+  "artifactPath": ".runs/exploration-release.json",
+  "discoveryMode": "explore",
+  "artifactStatus": "draft"
+}
