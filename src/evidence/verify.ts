@@ -40,6 +40,10 @@ const EvidenceScenarioSchema = z.strictObject({
   command: z.string().min(1),
   expectedStatus: z.string().min(1),
   modelCalls: z.number().int().nonnegative(),
+  sourceRevision: z
+    .string()
+    .regex(/^[a-f0-9]{40}$/)
+    .optional(),
   files: z.array(EvidenceFileSchema),
 });
 

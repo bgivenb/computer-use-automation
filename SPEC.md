@@ -10,7 +10,7 @@ live UI + LLM discovery -> reviewed, versioned artifact -> deterministic replay
 
 Discovery and replay intentionally have different trust boundaries:
 
-- Discovery may call an LLM, but every proposed action is checked against a reviewed step skeleton and runtime policy before execution.
+- Discovery may call an LLM. Guided mode checks a reviewed step skeleton; exploration chooses the sequence with an unordered reviewed checkpoint catalog. Every action remains runtime-policy checked.
 - Replay loads only a validated artifact and performs zero model calls.
 - Both phases operate through the same browser surface and policy engine.
 - A human handoff transfers control of the same browser context; it never launches a replacement session.
@@ -27,7 +27,7 @@ The included synthetic banking fixture represents a hostile legacy application e
 | `88888` | `failure` | Permission denied |
 | `99999` | `failure` or resumed `success` | Unexpected notice and same-session human handoff |
 
-Acceptance requires discovery evidence from a real provider call and replay evidence produced with `OPENAI_API_KEY` absent.
+Provider-backed discovery and credential-free replay evidence are retained separately from scripted test fixtures.
 
 ## 3. Runtime boundaries
 
@@ -82,16 +82,19 @@ Discovery is a genuine observe–decide–act loop:
 
 1. Start one browser session and navigate to the trusted target.
 2. Observe the active page and frames as a compact structured snapshot.
-3. Send the snapshot, safe prior history, and the reviewed next-step intent to the model.
+3. Send the snapshot and safe prior history to the model; guided mode also sends the reviewed next-step intent.
 4. Validate the structured response.
-5. Require its action kind to match the reviewed step skeleton and its result to satisfy that step's reviewed checkpoint.
+5. In guided mode, require the action kind to match the reviewed step skeleton and its result to satisfy that step's checkpoint. In exploration, validate the prior action against a catalog checkpoint selected from the next observation, before executing another action.
 6. Apply origin, route, command, and risk policy to the actual acting frame and destination.
 7. Execute the action and validate the step checkpoint.
 8. Record a redacted event and repeat until a terminal outcome.
 
 Discovery is bounded by per-step, provider-call, total-run, and maximum-step limits. Repeated state/action pairs fail as no-progress rather than looping indefinitely.
 
-The model cannot add steps, widen policy, select an irreversible final action, or write the final artifact directly. The compiler derives the artifact from the reviewed skeleton plus observed, reusable locator data, then computes its canonical digest.
+In guided mode, the model cannot add steps. Exploration can choose a different bounded sequence,
+but must select checkpoints from the reviewed catalog after observing action results. Neither mode
+can widen policy, execute an irreversible final action, or write the final artifact directly. The
+compiler emits schema-validated drafts; caller-managed signed approval is a separate lifecycle.
 
 ## 6. Deterministic replay
 

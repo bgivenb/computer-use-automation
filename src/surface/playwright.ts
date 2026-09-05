@@ -3,7 +3,6 @@ import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Frame, Locator, Page } from "playwright";
 import type {
-  ActionReceipt,
   CheckReceipt,
   Command,
   Condition,
@@ -12,41 +11,27 @@ import type {
   LocatorBundle,
   LocatorResolution,
   LocatorStrategy,
-  Observation,
   Target,
 } from "../core/contracts.js";
 import type { RunSession } from "../runtime/session.js";
+import {
+  LocatorResolutionError,
+  type ObservedControl,
+  type SurfaceObservation,
+  type SurfaceActionResult,
+  type SurfacePolicyContext,
+  type SurfaceAdapter,
+} from "./adapter.js";
+export {
+  LocatorResolutionError,
+  describeTarget,
+  type ObservedControl,
+  type SurfaceObservation,
+  type SurfaceActionResult,
+  type SurfacePolicyContext,
+} from "./adapter.js";
 
 type LocatorRoot = Page | Frame;
-
-export type ObservedControl = {
-  frameUrl: string;
-  tag: string;
-  role: string;
-  text: string;
-  selector: string;
-  name?: string;
-  type?: string;
-  href?: string;
-  placeholder?: string;
-  src?: string;
-  title?: string;
-};
-
-export type SurfaceObservation = Observation & {
-  controls: ObservedControl[];
-};
-
-export type SurfaceActionResult = {
-  receipt: ActionReceipt;
-  value?: unknown;
-};
-
-export type SurfacePolicyContext = {
-  url: string;
-  fingerprint: string;
-  riskText: string;
-};
 
 type TargetInspection = {
   tag: string;
@@ -82,32 +67,9 @@ const inspectElement = (element: Element): TargetInspection => {
   };
 };
 
-export class LocatorResolutionError extends Error {
-  readonly attempts: LocatorAttempt[];
-
-  constructor(target: Target, attempts: LocatorAttempt[]) {
-    super(`No unique locator strategy resolved target: ${target.description}`);
-    this.name = "LocatorResolutionError";
-    this.attempts = attempts;
-  }
-}
-
 const elapsed = (startedAt: number): number => Math.max(0, performance.now() - startedAt);
 
 const sha256 = (content: Uint8Array): string => createHash("sha256").update(content).digest("hex");
-
-const displayStrategy = (strategy: LocatorStrategy): string => {
-  switch (strategy.kind) {
-    case "role":
-      return `role=${strategy.role} name=${strategy.name}`;
-    case "label":
-      return `label=${strategy.text}`;
-    case "text":
-      return `text=${strategy.text}`;
-    case "css":
-      return `css=${strategy.selector}`;
-  }
-};
 
 const parseCurrency = (value: string): number => {
   const normalized = value.replace(/[^0-9.-]/g, "");
@@ -116,7 +78,7 @@ const parseCurrency = (value: string): number => {
   return parsed;
 };
 
-export class PlaywrightSurface {
+export class PlaywrightSurface implements SurfaceAdapter {
   readonly session: RunSession;
   readonly runDirectory: string;
 
@@ -576,6 +538,3 @@ export class PlaywrightSurface {
     return { kind: "screenshot", path: relativePath, sha256: sha256(bytes) };
   }
 }
-
-export const describeTarget = (target: Target): string =>
-  `${target.description} (${target.strategies.map(displayStrategy).join(" -> ")})`;

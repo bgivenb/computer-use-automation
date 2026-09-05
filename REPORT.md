@@ -37,11 +37,12 @@ or table contract.
 
 The compiler replaces exact discovery samples with `{{inputs.name}}` templates and fails if a sample
 survives serialization. It also checks that output bindings exist, artifact actions are permitted,
-business branches are declared, and step IDs are unique. The deliberate trade-off is that discovery
-currently learns the action sequence while the capability profile supplies semantic step metadata and
-must have the same action count. This is safer and easier to review than inferring production error
-policy from one model run, but a general recorder would need an approval workflow for editing or
-inferring that metadata.
+business branches are declared, and step IDs are unique. Guided discovery follows a reviewed sequence.
+Exploration chooses its own action order and targets, then selects an unordered, author-reviewed
+checkpoint against the next observation. It cannot invent success semantics or approve itself.
+Both produce drafts. `jsondiffpatch` supplies review diffs; Node's Ed25519 implementation signs the
+exact artifact and runtime policy with a bounded lifetime. The independent trust root is supplied by
+the caller. This proves approval by that key, not production fitness or a person's identity.
 
 # Determinism & error handling
 
@@ -73,9 +74,9 @@ observe/resolve/act/check/capture behaviors using an accessibility tree and OS i
 should remain a low-confidence fallback tied to a screenshot anchor and viewport, never the only
 locator for a high-risk action.
 
-The implementation is web-only today: runners are typed directly to `PlaywrightSurface`, and the
-artifact's surface discriminator is `web`. Extracting a formal `SurfaceAdapter` interface and adding a
-desktop discriminator is the next boundary change; no desktop support is implied by this reference implementation.
+The implementation is web-only today. Runners use a `SurfaceAdapter` port, while the composition layer
+supplies the browser-specific session for human handoff. The artifact's discriminator is still `web`;
+the port is an extension seam, not evidence of a desktop adapter that has not been implemented.
 
 For tenant reuse, the artifact already identifies a vendor family and version, but its entry origin and
 permissions are concrete. At scale I would store an approved base capability per vendor/version range
@@ -87,8 +88,9 @@ artifact. Tenant profiles and drift management are designed here, not implemente
 
 # Escalation & handoff
 
-Discovery stops after the same action repeats against an unchanged surface, a model escalation, an
-unsafe policy result, the step limit, or its wall-clock/model-call deadline. Replay raises an
+Discovery detects repeated actions, model escalation, failed checkpoints and unsafe policy results.
+An interactive caller with a reviewed resume condition can route these into a same-session handoff;
+otherwise they stop. Step, model-call, wall-clock, and operator deadlines remain bounded. Replay raises an
 intervention when a declared branch encounters a state it cannot safely resolve. The request identifies
 the run, capability, step, goal, reason, session, status, and time; the loopback operator page supplies
 a current screenshot of the live target.
@@ -143,7 +145,8 @@ capability profile rather than inferring all semantics from one transcript. Reco
 safe action rather than a general retry scheduler. The final account action is never executed, and the
 demo server would not persist it anyway.
 
-Next work, in order: route generic irreversible-policy decisions through an explicit approval
-protocol; add operator authentication and durable intervention routing; add pixel-level screenshot
-DLP; extract a formal surface interface; then implement versioned tenant overlays and drift
-quarantine. No scaling infrastructure is warranted before those boundaries need production use.
+The release adds signed artifact review and a nine-scenario replay evaluation without adding a
+database, queue or agent framework. Playwright, Zod, the official provider SDK, jsondiffpatch and
+fast-check cover established mechanisms; custom code owns policy and execution semantics. Next:
+operator authentication, screenshot DLP, durable intervention routing, then measured tenant-version
+reuse. No scaling infrastructure is warranted before those boundaries need production use.

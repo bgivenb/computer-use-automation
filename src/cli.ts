@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { randomUUID } from "node:crypto";
+import { projectCommand, readJson } from "./app/project-cli.js";
+import { CapabilityProfileSchema } from "./artifact/profile.js";
+import { PermissionSetSchema } from "./core/contracts.js";
+import { redactValue } from "./core/redact.js";
 import { artifactDigest } from "./artifact/compiler.js";
 import { discoverCapability } from "./app/discover.js";
 import { invalidInputSummary, prepareReplay } from "./app/replay.js";
@@ -17,13 +22,21 @@ const DEFAULT_ARTIFACT = "artifacts/examples/prepare-savings-subaccount.v1.json"
 const DEFAULT_GOAL =
   "Look up member 12345, read the savings balance, and prepare a new savings sub-account named Rainy Day through the review screen.";
 
-const usage = `Computer-use automation demo
+const usage = `Computer-use automation runtime
 
 Usage:
   npm run dev -- serve [--port 4173]
-  npm run discover -- [--driver scripted|openai] [--artifact PATH] [--headed]
+  npm run discover -- [--driver scripted|openai] [--artifact PATH] [--headed] [--mode guided|explore] [--goal TEXT]
+    External synthetic target: --target URL --profile FILE --inputs FILE --policy FILE --synthetic [--interactive]
   npm run replay -- [--artifact PATH] [--member-id 12345] [--nickname "Rainy Day"] [--interactive]
   npm run demo
+  npm run cua -- inspect --artifact FILE
+  npm run cua -- diff --before FILE --after FILE
+  npm run cua -- keygen --directory NEW_DIRECTORY
+  npm run cua -- approve --artifact FILE --policy FILE --key PRIVATE_PEM --reviewer NAME --reason TEXT --out FILE
+  npm run cua -- run --artifact FILE --inputs FILE --policy FILE --approval FILE --trusted-key PUBLIC_PEM
+  npm run cua -- profile --target URL --out FILE
+  npm run cua -- evaluate [--repeat 3] [--out NEW_FILE]
 
 Replay never calls a model. A genuine discovery requires OPENAI_API_KEY in the process environment.`;
 
@@ -63,9 +76,7 @@ const driverFor = (name: string): ModelDriver => {
   if (name === "scripted") return new ScriptedModelDriver();
   if (name === "openai") {
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error(
-        "OPENAI_API_KEY is not set; export a rotated key locally before the genuine run",
-      );
+      throw new Error("OPENAI_API_KEY is not set; supply it in the local process environment");
     }
     return new OpenAIResponsesDriver();
   }
@@ -77,27 +88,76 @@ const discover = async (args: string[]): Promise<void> => {
     args,
     options: {
       driver: { type: "string", default: "scripted" },
-      artifact: { type: "string", default: DEFAULT_ARTIFACT },
+      artifact: { type: "string", default: `.runs/discovery-${randomUUID()}.json` },
       port: { type: "string" },
       headed: { type: "boolean", default: false },
+      mode: { type: "string", default: "guided" },
+      goal: { type: "string" },
+      target: { type: "string" },
+      profile: { type: "string" },
+      inputs: { type: "string" },
+      policy: { type: "string" },
+      synthetic: { type: "boolean", default: false },
+      interactive: { type: "boolean", default: false },
     },
     strict: true,
   });
-  const server = await startDemoServer({ port: parsePort(values.port) });
+  if (values.mode !== "guided" && values.mode !== "explore")
+    throw new Error("Mode must be guided or explore");
+  const goal = values.goal ?? DEFAULT_GOAL;
+  if (!goal.trim() || (values.target && !values.goal))
+    throw new Error("External discovery requires an explicit nonempty --goal");
+  if (values.target && (!values.profile || !values.inputs || !values.policy || !values.synthetic))
+    throw new Error(
+      "External discovery requires --profile, --inputs, --policy and --synthetic; raw screenshots are not suitable for regulated data",
+    );
+  if (!values.target && (values.profile || values.inputs || values.policy))
+    throw new Error("Use --target with external profile, inputs and policy");
+  const externalProfile = values.profile
+    ? CapabilityProfileSchema.parse(await readJson(values.profile))
+    : undefined;
+  const externalPolicy = values.policy
+    ? PermissionSetSchema.parse(await readJson(values.policy))
+    : undefined;
+  const externalInputs = values.inputs ? await readJson(values.inputs) : undefined;
+  if (
+    externalInputs !== undefined &&
+    (!externalInputs || typeof externalInputs !== "object" || Array.isArray(externalInputs))
+  )
+    throw new Error("Inputs must be a JSON object");
+  if (externalProfile && externalProfile.entryUrl !== values.target)
+    throw new Error("Target must exactly match the reviewed profile entryUrl");
+  const selectedDriver = driverFor(values.driver);
+  const server = values.target
+    ? undefined
+    : await startDemoServer({ port: parsePort(values.port) });
+  let operator: OperatorServer | undefined;
   try {
-    const profile = createDemoProfile(server.origin);
+    const origin = values.target ? new URL(values.target).origin : (server as DemoServer).origin;
+    const profile = externalProfile ?? createDemoProfile(origin);
+    profile.mode = values.mode;
     const result = await discoverCapability({
-      goal: DEFAULT_GOAL,
-      origin: server.origin,
+      goal,
+      origin,
       profile,
-      inputValues: profile.inputSamples,
-      driver: driverFor(values.driver),
+      inputValues: (externalInputs as Record<string, unknown>) ?? profile.inputSamples,
+      driver: selectedDriver,
       artifactPath: values.artifact,
       headless: !values.headed,
+      ...(externalPolicy ? { runtimePermissions: externalPolicy } : {}),
+      ...(values.interactive
+        ? {
+            onRuntimeReady: async (_runtime, coordinator) => {
+              operator = await startOperatorServer({ coordinator });
+              note(`Operator console: ${operator.origin}`);
+            },
+          }
+        : {}),
     });
     output({ ...result.summary, runDirectory: result.runDirectory });
   } finally {
-    await server.close();
+    await operator?.close();
+    await server?.close();
   }
 };
 
@@ -261,6 +321,15 @@ const demo = async (): Promise<void> => {
 const main = async (): Promise<void> => {
   const [command, ...args] = process.argv.slice(2);
   switch (command) {
+    case "inspect":
+    case "diff":
+    case "keygen":
+    case "approve":
+    case "run":
+    case "profile":
+    case "evaluate":
+      output(await projectCommand(command, args));
+      break;
     case "serve":
       await serve(args);
       break;
@@ -285,6 +354,8 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : "Unknown error"}\n`);
+  process.stderr.write(
+    `${redactValue(error instanceof Error ? error.message : "Unknown error")}\n`,
+  );
   process.exitCode = 1;
 });

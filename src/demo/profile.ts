@@ -174,6 +174,10 @@ export const createDemoProfile = (origin: string): CapabilityProfile => ({
   },
   businessOutcomes: [
     {
+      code: "validation-rejected",
+      description: "The host rejected the proposed account nickname.",
+    },
+    {
       code: "member-not-found",
       description: "No member exists for the supplied synthetic member number.",
     },
@@ -224,6 +228,15 @@ export const createDemoProfile = (origin: string): CapabilityProfile => ({
           },
         },
         {
+          when: { kind: "text", includes: "Session expired" },
+          action: {
+            kind: "fail",
+            category: "permission",
+            message:
+              "Session expired; an authorized operator must reauthenticate. No automatic login or retry.",
+          },
+        },
+        {
           when: visible(demoTargets.permissionDenied),
           action: {
             kind: "fail",
@@ -271,8 +284,25 @@ export const createDemoProfile = (origin: string): CapabilityProfile => ({
       kind: "click",
       description: "Reach the review checkpoint",
       expect: [visible(demoTargets.readyForApproval)],
+      onObserved: [
+        {
+          when: { kind: "text", includes: "Enter an account nickname." },
+          action: { kind: "return_outcome", code: "validation-rejected" },
+        },
+      ],
       risk: "reversible",
     },
   ],
-  success: [visible(demoTargets.readyForApproval)],
+  success: [
+    visible(demoTargets.readyForApproval),
+    { kind: "text", includes: "{{inputs.memberId}}" },
+    { kind: "text", includes: "{{inputs.accountNickname}}" },
+  ],
+  checkpoints: [
+    visible(demoTargets.search),
+    visible(demoTargets.searchResults),
+    visible(demoTargets.memberDetail),
+    visible(demoTargets.subaccountHeading),
+    visible(demoTargets.readyForApproval),
+  ],
 });

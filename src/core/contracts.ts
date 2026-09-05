@@ -424,6 +424,7 @@ export const DiscoveryDecisionSchema = z.discriminatedUnion("type", [
     type: z.literal("act"),
     command: CommandSchema,
     reason: z.string().min(1),
+    checkpoint: ConditionSchema.optional(),
   }),
   z.strictObject({
     type: z.literal("finish"),

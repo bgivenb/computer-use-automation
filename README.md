@@ -2,8 +2,12 @@
 
 [![CI](https://github.com/bgivenb/computer-use-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/bgivenb/computer-use-automation/actions/workflows/ci.yml)
 
-A production-minded TypeScript and Playwright reference for turning one model-guided UI discovery
-run into a typed, reviewable capability—and replaying it later without model decisions.
+Discover workflows through live UI interaction. Compile them into typed capabilities. Review the
+artifact and its permissions, then replay without model decisions—or return control to an operator
+when execution cannot safely continue.
+
+A local TypeScript runtime for applications whose only integration surface is their UI. The included
+legacy bank-servicing application is a synthetic test environment, not a required backend.
 
 The project focuses on the hard parts of dependable computer use: generated element IDs, nested
 tables and frames, explicit policy boundaries, deterministic recovery, evidence integrity, and
@@ -22,6 +26,23 @@ bank-servicing interface.
   inspectable without preserving credentials.
 - **Unexpected states stop safely.** Automation releases its lease before a human takes control, and
   resume is refused until the declared checkpoint passes.
+
+## Runtime, not just a recording
+
+- **Two discovery modes.** Guided mode follows reviewed step semantics. Exploration chooses its own
+  action sequence within the same permissions, then validates checkpoints against the newly observed
+  screen. Both produce drafts; neither can approve itself.
+- **Review lifecycle.** Inspect capabilities, compare revisions with `jsondiffpatch`, and approve an
+  exact artifact + runtime policy using Ed25519 signatures. The `run` command checks an independently
+  trusted public key and expiry before starting a browser. Any content or policy change invalidates approval.
+- **Reusable entry points.** Supply a goal, target, typed profile, inputs, and independent runtime
+  policy. Browser operations implement a `SurfaceAdapter`; browser-specific human control remains
+  in the runtime composition layer. Desktop support is not implemented.
+- **Measured failure behavior.** A repeatable browser evaluation covers nine scenarios, including
+  expired sessions, host validation, ambiguous controls, slow loads, and hostile page text.
+
+See [operations and approval](docs/OPERATIONS.md), [engineering decisions](docs/ENGINEERING.md),
+and [evaluation methodology](docs/EVALUATION.md).
 
 ## Proof of behavior
 
@@ -91,28 +112,28 @@ To inspect the agent-to-artifact and artifact-to-replay steps separately:
 
 ```bash
 npm run discover -- --driver scripted \
-  --artifact artifacts/examples/prepare-savings-subaccount.v1.json
+  --artifact .runs/scripted-draft.json
 
 env -u OPENAI_API_KEY npm run replay -- \
-  --artifact artifacts/examples/prepare-savings-subaccount.v1.json \
+  --artifact .runs/scripted-draft.json \
   --member-id 12345 \
   --nickname "Rainy Day"
 ```
 
-The first command is useful for development, but its scripted decisions do not count as the required
-genuine discovery run.
+The first command uses a scripted fixture, not a live model. Provider-backed recordings are identified
+separately in the evidence package.
 
 ## Genuine discovery and deterministic replay
 
-Use a newly rotated key in the shell that launches discovery. Do not add it to this repository or
+Use a locally configured key in the shell that launches discovery. Do not commit it or
 paste it into evidence.
 
 ```bash
-export OPENAI_API_KEY="<newly-rotated-key>"
+export OPENAI_API_KEY="<your-local-key>"
 export OPENAI_MODEL="gpt-5.4-mini"
 
 npm run discover -- --driver openai --headed \
-  --artifact artifacts/examples/prepare-savings-subaccount.v1.json
+  --artifact .runs/guided-draft.json
 ```
 
 The CLI starts the live local target, runs one structured OpenAI Responses decision per observation,
@@ -123,7 +144,7 @@ storage is disabled. After discovery, prove replay has no credential dependency:
 unset OPENAI_API_KEY
 
 npm run replay -- \
-  --artifact artifacts/examples/prepare-savings-subaccount.v1.json \
+  --artifact .runs/guided-draft.json \
   --member-id 12345 \
   --nickname "Rainy Day"
 ```
@@ -131,9 +152,28 @@ npm run replay -- \
 Replay returns structured JSON containing the artifact digest, terminal result, normalized execution
 signature, evidence references, and `modelCalls: 0`.
 
+To discover the sequence without a prescribed next step:
+
+```bash
+npm run discover -- --driver openai --mode explore \
+  --artifact .runs/exploration-draft.json
+```
+
+Exploration checkpoints and recovery coverage require review; one successful run is not a reliability
+claim. The existing `replay` command is the local bank fixture path. Use the approval-gated `run`
+command for an independently configured target, as shown in the operations guide.
+
+Run a credential-free evaluation (three repetitions of each scenario):
+
+```bash
+npm run evaluate -- --repeat 3
+```
+
 ## Exceptional paths and handoff
 
-After producing the artifact, run the declared exceptional states with the same replay command:
+The checked-in guided example includes the exceptional branches below. These commands use that
+example by default; a newly explored draft needs its own recovery review. Artifact writes refuse
+existing destinations, so choose a new path for each discovery.
 
 ```bash
 npm run replay -- --member-id 00000   # legitimate business outcome; exit 0

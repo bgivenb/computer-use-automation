@@ -1,25 +1,21 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import type { z } from "zod";
+import type { CapabilityProfileSchema } from "./profile.js";
 import {
   CapabilityArtifactSchema,
   type ActionReceipt,
-  type BusinessOutcomeSpec,
   type CapabilityArtifact,
   type Command,
-  type Condition,
-  type OutputSpec,
-  type PermissionSet,
-  type Risk,
-  type StepBranch,
   type Target,
-  type ValueSpec,
 } from "../core/contracts.js";
 import { parameterizeCommand } from "./bind.js";
 
 export type DiscoveryAction = {
   command: Command;
   receipt: ActionReceipt;
+  semantics?: StepSemantics;
 };
 
 export type DiscoveryTrace = {
@@ -28,30 +24,8 @@ export type DiscoveryTrace = {
   actions: DiscoveryAction[];
 };
 
-export type StepSemantics = {
-  kind: Command["kind"];
-  description: string;
-  expect: Condition[];
-  onObserved?: StepBranch[];
-  timeoutMs?: number;
-  risk: Risk;
-};
-
-export type CapabilityProfile = {
-  id: string;
-  revision: number;
-  name: string;
-  description: string;
-  app: CapabilityArtifact["app"];
-  entryUrl: string;
-  inputs: Record<string, ValueSpec>;
-  inputSamples: Record<string, string | number | boolean>;
-  outputs: Record<string, OutputSpec>;
-  businessOutcomes: BusinessOutcomeSpec[];
-  permissions: PermissionSet;
-  steps: StepSemantics[];
-  success: Condition[];
-};
+export type CapabilityProfile = z.infer<typeof CapabilityProfileSchema>;
+export type StepSemantics = CapabilityProfile["steps"][number];
 
 export type CompiledArtifact = {
   artifact: CapabilityArtifact;
@@ -96,7 +70,7 @@ export const compileArtifact = (
   profile: CapabilityProfile,
   inputSamples: Readonly<Record<string, string | number | boolean>> = profile.inputSamples,
 ): CompiledArtifact => {
-  if (trace.actions.length !== profile.steps.length) {
+  if (profile.mode !== "explore" && trace.actions.length !== profile.steps.length) {
     throw new Error(
       `Discovery recorded ${trace.actions.length} actions; profile requires ${profile.steps.length}`,
     );
@@ -119,7 +93,7 @@ export const compileArtifact = (
     permissions: profile.permissions,
     steps: trace.actions.map((action, index) => {
       assertReusableCommand(action.command);
-      const semantics = profile.steps[index];
+      const semantics = profile.mode === "explore" ? action.semantics : profile.steps[index];
       if (!semantics) throw new Error(`Missing semantics for discovery action ${index}`);
       if (action.command.kind !== semantics.kind) {
         throw new Error(
@@ -158,6 +132,7 @@ export const writeArtifact = async (
   await writeFile(absolutePath, `${JSON.stringify(artifact, null, 2)}\n`, {
     encoding: "utf8",
     mode: 0o600,
+    flag: "wx",
   });
   return absolutePath;
 };

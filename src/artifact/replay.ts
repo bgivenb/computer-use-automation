@@ -17,11 +17,8 @@ import type { EventRecorder } from "../core/event-recorder.js";
 import { effectiveCommandRisk, evaluatePolicy, type Policy } from "../core/policy.js";
 import { redactValue } from "../core/redact.js";
 import type { InterventionCoordinator, InterventionEvent } from "../runtime/intervention.js";
-import {
-  LocatorResolutionError,
-  type PlaywrightSurface,
-  describeTarget,
-} from "../surface/playwright.js";
+import { LocatorResolutionError, type SurfaceAdapter, describeTarget } from "../surface/adapter.js";
+import type { RunSession } from "../runtime/session.js";
 import { bindCommand, bindCondition, bindTemplate, validateInputs } from "./bind.js";
 
 export type ReplaySummary = {
@@ -83,7 +80,8 @@ export const replayArtifact = async (options: {
   artifactSha256: string;
   inputValues: Record<string, unknown>;
   runtimePermissions: PermissionSet;
-  surface: PlaywrightSurface;
+  surface: SurfaceAdapter;
+  session?: RunSession;
   recorder: EventRecorder;
   coordinator?: InterventionCoordinator;
 }): Promise<ReplaySummary> => {
@@ -364,7 +362,7 @@ export const replayArtifact = async (options: {
         }
       }
       case "intervene": {
-        if (!options.coordinator) {
+        if (!options.coordinator || !options.session) {
           return {
             kind: "terminal",
             summary: await fail({
@@ -380,7 +378,7 @@ export const replayArtifact = async (options: {
         const screenshot = await options.surface.capture(`handoff-${step.id}`);
         evidence.push(screenshot);
         const handle = options.coordinator.request({
-          session: options.surface.session,
+          session: options.session,
           runId,
           capabilityId: artifact.id,
           stepId: step.id,

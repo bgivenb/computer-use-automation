@@ -99,6 +99,7 @@ export const prepareReplay = async (options: {
     inputValues: options.inputValues,
     runtimePermissions,
     surface: runtime.surface,
+    session: runtime.session,
     recorder: runtime.recorder,
     ...(options.allowInterventions === false ? {} : { coordinator }),
   }).then(async (summary) => {
